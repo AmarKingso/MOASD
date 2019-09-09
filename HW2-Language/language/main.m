@@ -12,8 +12,8 @@
 int main(){
     int randperson = arc4random() % 3;
     int randlang = arc4random() % 4;
-    NSString *person;
-    Language *lang;
+    NSString *person;       //要学习的人
+    Language *lang;     //要学习的语言
     
     NSTimeInterval Daysecs = 24 * 60 * 60;
     NSDate *startday = [NSDate date];       //获取当前日期
