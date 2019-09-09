@@ -11,3 +11,30 @@
 
 ---
 #### 关键代码及解释
+```Object-C
+/*Language类的定义*/
+@interface Language : NSObject {
+
+    NSInteger progress_tour;
+
+    NSInteger progress_unit;
+
+}
+
+- (void)learnOneUnit;
+
+- (NSInteger)getTour;
+
+- (NSInteger)getUnit;
+
+- (bool)isFinish;
+
+- (NSString *)getName;
+
+@end
+```
+上述代码为Language类的定义，其成员函数的作用分别为uint的自增以及tour相应地增加；获取当前tour；获取当前unit；判断是否完成学习；得到所要学习的语言的名字。其中getName用于实现多态。
+
+```Object-C
+
+```
