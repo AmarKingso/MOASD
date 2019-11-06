@@ -101,177 +101,242 @@ Example responses:
 ## 三、实验结果
 
 ### (1)实验截图
-初始界面
+初始界面  
+![在这里插入图片描述](https://img-blog.csdnimg.cn/20191106164453835.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2Rpb3NtYWlfa2luZ3Nv,size_16,color_FFFFFF,t_70)
+  
+答题界面  
+![在这里插入图片描述](https://img-blog.csdnimg.cn/20191106164717356.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2Rpb3NtYWlfa2luZ3Nv,size_16,color_FFFFFF,t_70)
+![在这里插入图片描述](https://img-blog.csdnimg.cn/20191106164853776.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2Rpb3NtYWlfa2luZ3Nv,size_16,color_FFFFFF,t_70)
+![在这里插入图片描述](https://img-blog.csdnimg.cn/20191106165057700.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2Rpb3NtYWlfa2luZ3Nv,size_16,color_FFFFFF,t_70)
+
+结果界面  
+![在这里插入图片描述](https://img-blog.csdnimg.cn/20191106165156823.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2Rpb3NtYWlfa2luZ3Nv,size_16,color_FFFFFF,t_70)
 
 ### (2)实验步骤以及关键代码
-#### ①搭建Flutter开发环境
-根据官方教程进行搭建，并下载安装与配置Android Studio，这里给出Android Studio国内[下载网址](https://developer.android.google.cn/studio/)  
-需要注意的是Android Studio要求JDK版本在8或以下，否则license无法更新
+#### ①文件结构
+![在这里插入图片描述](https://img-blog.csdnimg.cn/20191106165407379.png)
 
-#### ②正式开始编写代码
-- **文件结构如下**  
-![在这里插入图片描述](https://img-blog.csdnimg.cn/20191024000637740.png)  
+- UnitViewController：初始界面的控制器
+- QuestionViewController：答题界面的控制器
+- FinishingViewController：结束界面的控制器
+- UnitCell：初始界面中单元选项对应的的自定义cell
+- ChoiceCell：答题界面选项对应的自定义的cell
 
-- **main.dart**  
-> 作为App的入口，对主题颜色进行了设置，HomePage在feed_home中实现
-```dart
-import 'package:flutter/material.dart';
-import 'package:flutter_app/feed_home.dart';
-
-void main(){
-  runApp(MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'HW4',
-      theme: ThemeData(primaryColor: Colors.white),
-      home: HomePage(),
-    );
-  }
+#### ②AppDelegate  
+> 将navigation作为根视图添加到窗口中，并将初始界面推入
+```obj-c
+- (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
+    // Override point for customization after application launch.
+    self.window = [[UIWindow alloc] initWithFrame:[[UIScreen mainScreen]bounds]];
+    UnitViewController *uvc = [[UnitViewController alloc] init];
+    _nav = [[UINavigationController alloc] initWithRootViewController: uvc];
+    self.window.rootViewController = _nav;
+    self.window.backgroundColor = [UIColor whiteColor];
+    [self.window makeKeyAndVisible];
+    return YES;
 }
 ```
   
-- **feed_home.dart**  
-_HomePageState类中实现的函数分别为：
-  - 在Flutter层获取电池电量的API  
-  ```dart
-  static const platform = const MethodChannel('samples.flutter.io/battery');
-  String _batteryLevel = '100%';
+#### ③UnitViewController
+> 由两个控件组成，label用于实现上方文本，collectionview实现四个单元选项
+```obj-c
+@interface UnitViewController : UIViewController
+@property (nonatomic, strong) UILabel *titleLabel;
+@property (nonatomic, strong) UICollectionView *collectionView;
+@end
+```
 
-  Future<Null> _getBatteryLevel() async {
-    String batteryLevel;
-    try {
-      final int result = await platform.invokeMethod('getBatteryLevel');
-      batteryLevel = '$result%';
-    } on PlatformException catch (e) {
-      batteryLevel = "Failed to get battery level: '${e.message}'.";
+> collectionview的响应点击cell事件的代理
+```obj-c
+- (void)collectionView:(UICollectionView *)collectionView didSelectItemAtIndexPath:(NSIndexPath *)indexPath{
+    UnitCell *cell = (UnitCell *)[collectionView cellForItemAtIndexPath: indexPath];
+    QuestionViewController *qvc = [[QuestionViewController alloc] init];
+    qvc.navigationItem.title = cell.title.text;
+    qvc.currentUnit = indexPath.item;
+    [self.navigationController pushViewController: qvc animated: YES];
+}
+```
+
+#### ④QuestionViewController
+> 两个label分别用于显示题目和答案，一个collectionview实现四个选项，一个button对应下方按钮，一个view用于动画实现
+```obj-c
+@interface QuestionViewController : UIViewController
+@property (nonatomic, strong) UILabel *titleLabel;
+@property (nonatomic, strong) UICollectionView *collectionView;
+@property (nonatomic, strong) UIButton *button;
+@property (nonatomic, strong) UIView *answer;
+@property (nonatomic, strong) UILabel *answerText;
+
+@property (nonatomic, strong) NSURLSession *delegateFreeSession;
+@property (nonatomic, strong) NSDictionary *questionDict;
+@property (nonatomic) NSUInteger currentUnit;       //当前unit
+@property (nonatomic) NSUInteger questionIndex;     //当前问题编号
+@property (nonatomic) NSUInteger selectIndex;       //选中选项编号
+@property (nonatomic) NSUInteger count;             //正确数量
+@end
+```
+
+> 将view的加载添加到task中
+```obj-c
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    _questionIndex = 0;
+    _selectIndex = -1;
+    _count = 0;
+    
+    //网络请求
+    NSURLSessionConfiguration *defaultConfigObject = [NSURLSessionConfiguration defaultSessionConfiguration];
+    self.delegateFreeSession = [NSURLSession sessionWithConfiguration: defaultConfigObject delegate: (id)self delegateQueue: [NSOperationQueue mainQueue]];
+    
+    NSURL *url = [NSURL URLWithString:[NSString stringWithFormat: @"https://service-p12xr1jd-1257177282.ap-beijing.apigateway.myqcloud.com/release/HW5_api?unit=%lu", self.currentUnit]];
+    NSURLRequest *request = [NSURLRequest requestWithURL:url];
+    
+    NSURLSessionDataTask *dataTask = [self.delegateFreeSession dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+        if(error == nil){
+            self.questionDict = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
+            
+            [self.view addSubview: self.titleLabel];
+            [self.view addSubview: self.collectionView];
+            [self.view addSubview: self.answer];
+            [self.view addSubview: self.button];
+            
+            //NSString *text = [[NSString alloc] initWithData: data encoding: NSUTF8StringEncoding];
+            //NSLog(@"Data = %@",text);
+            //NSLog(@"Dict = %@",self.questionDict);
+        }
+    }];
+    
+    [dataTask resume];
+}
+```
+
+> 实现点击一个cell后，当前cell亮起且其他都不亮，同时激活button
+```obj-c
+- (void)collectionView:(UICollectionView *)collectionView didSelectItemAtIndexPath:(NSIndexPath *)indexPath{
+    //未确认答案前响应点击
+    if(self.button.tag == 0){
+        _selectIndex = indexPath.item;
+        //获取所有cell
+        NSArray *arr = [collectionView visibleCells];
+        //遍历所有cell，实现同时只激活一个选项
+        for(int i = 0; i < 4; i++){
+            NSIndexPath *cur = [collectionView indexPathForCell: arr[i]];
+            ChoiceCell *cell = (ChoiceCell *)[collectionView cellForItemAtIndexPath: cur];
+            if(cur == indexPath){
+                cell.title.layer.borderWidth = 1.0f;
+                //cell.title.layer.borderColor = [[UIColor greenColor] CGColor];
+                cell.title.textColor = [UIColor colorWithRed:102.0/255.0 green:200.0/255.0 blue:90.0/255.0 alpha:1];
+            }
+            else{
+                cell.title.layer.borderWidth = 0;
+                cell.title.textColor = [UIColor blackColor];
+            }
+        }
+        _button.backgroundColor = [UIColor colorWithRed:102.0/255.0 green:200.0/255.0 blue:90.0/255.0 alpha:1];
+        _button.userInteractionEnabled = YES;
     }
-
-    setState(() {
-      _batteryLevel = batteryLevel;
-    });
-  }
-  ```
-  
-  - APP的初始页面（AppBar，BottomAppBar）
-  ```dart
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Helo'),
-        centerTitle: true,
-        leading: IconButton(
-          icon: Icon(
-            Icons.camera_alt,
-            color: Colors.black,
-          ),
-          padding: EdgeInsets.only(left: 12.0),
-        ),
-        actions: <Widget>[
-          FlatButton.icon(
-            icon: Icon(Icons.battery_unknown),
-            padding: EdgeInsets.only(right: 12.0),
-            onPressed: _getBatteryLevel,
-            label: Text(_batteryLevel,
-              style: TextStyle(
-                fontSize: 20.0,
-                color: Colors.black,
-              ),
-            ),
-          ),
-        ],
-      ),
-      body: _homeBody(),
-      bottomNavigationBar: BottomAppBar(
-        color: Colors.white,
-        child: Row(
-          children: <Widget>[
-            IconButton(
-              icon: Icon(Icons.home),
-              disabledColor: Colors.black,
-            ),
-            IconButton(icon: Icon(Icons.search)),
-            IconButton(icon: Icon(Icons.add_box)),
-            IconButton(icon: Icon(Icons.favorite)),
-            IconButton(icon: Icon(Icons.account_box)),
-          ],
-          mainAxisAlignment: MainAxisAlignment.spaceAround,     //均匀分布
-        ),
-      ),
-    );
-  }
-  ```
-  
-  - Cell的复用  
-  ```dart
-  Widget _homeBody(){
-    return ListView.builder(
-      itemCount: 6,
-      itemBuilder: (BuildContext context, int index){
-        return EveryCell();
-      },
-    );
-  }
-  ```
-  
-- **feed_list.dart**  
-对Cell的实现，通过container容器实现，在container中添加多个container以实现多个组件组合的效果  
-一个Cell为一个Container，其中包括6个Container，采用Wrap流式布局  
-6个Container分别对应为上方头像，昵称，中间图片，左下角图标，下方头像，评论框  
-下面给出中间图片的实现代码，其实现了页面跳转功能：  
-```dart
-Container(
-  child: FlatButton(
-    onPressed: () {
-      Navigator.push(context,
-        MaterialPageRoute(builder: (context){
-          return DetailContent();
-        }));
-    },
-    child: (
-      Image.asset("resources/timg.jpeg")
-    ),
-  ),
-),
-```
-
-- **feed_list.dart**  
-只需使用脚手架来实现AppBar与body即可，body仅为图片，通过设置Container大小实现覆盖整个页面
-```dart
-import 'package:flutter/material.dart';
-
-class DetailContent extends StatelessWidget{
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text("Andrew"),
-        centerTitle: true,
-      ),
-      body: Container(
-        height: MediaQuery.of(context).size.height,
-        width: MediaQuery.of(context).size.width,
-        child: (
-            Image.asset("resources/timg.jpeg")
-        ),
-      ),
-    );
-  }
 }
 ```
 
-- **电量获取的API在Android端的实现
-实现参考[官方教程](https://book.flutterchina.club/chapter12/android_implement.html)  
-这里采用kotlin实现，文件在android/app/src/main/kotlin下的MainActivity中
+> 实现点击按钮触发不同的事件，通过按钮的tag属性进行判断，tag=0时，按钮为确定按钮，提交选择结果以及触发动画；tag=1时，为继续按钮，如果题目答完则进入结束界面，否则触发动画并进入下一题
+```obj-c
+- (void)triggerAnim: (UIButton *)sender{
+    //点击确定
+    if(sender.tag == 0){
+        sender.tag = 1;
+        [sender setTitle: @"继续" forState: UIControlStateNormal];
+        
+        //提交结果
+        NSURL *url = [NSURL URLWithString: @"https://service-p12xr1jd-1257177282.ap-beijing.apigateway.myqcloud.com/release/HW5_api"];
+        NSMutableURLRequest * urlRequest = [NSMutableURLRequest requestWithURL:url];
+        [urlRequest setHTTPMethod:@"POST"];
+        
+        // 设置请求体为JSON
+        NSDictionary *dic = @{@"unit": [NSString stringWithFormat:@"%ld", _currentUnit], @"question": [NSString stringWithFormat:@"%ld", _questionIndex], @"answer": _questionDict[@"data"][_questionIndex][@"choices"][_selectIndex]};
+        NSError *error = nil;
+        NSData *jsonData = [NSJSONSerialization dataWithJSONObject:dic options:NSJSONWritingPrettyPrinted error:&error];
+        NSString *jsonString = [[NSString alloc] initWithData:jsonData encoding:NSUTF8StringEncoding];
+        [urlRequest setHTTPBody:[jsonString dataUsingEncoding:NSUTF8StringEncoding]];
+        
+        NSURLSessionDataTask * dataTask = [self.delegateFreeSession dataTaskWithRequest:urlRequest completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+            if(error == nil) {
+                //判断结果，并得到答案
+                NSDictionary *dict = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
+                if(dict[@"message"] == [NSString stringWithFormat: @"right"]){
+                    sender.backgroundColor = [UIColor colorWithRed:102.0/255.0 green:200.0/255.0 blue:90.0/255.0 alpha:1];
+                    self.answer.backgroundColor = [UIColor colorWithRed:144.0/255.0 green:238.0/255.0 blue:144.0/255.0 alpha:1];
+                    self.count++;
+                }
+                else{
+                    sender.backgroundColor = [UIColor colorWithRed:234.0/255.0 green:62.0/255.0 blue:51.0/255.0 alpha:1];
+                    self.answer.backgroundColor = [UIColor colorWithRed:238.0/255.0 green:127.0/255.0 blue:128.0/255.0 alpha:1];
+                }
+                
+                [self.answerText setText: [NSString stringWithFormat: @"正确答案：%@", dict[@"data"]]];
+
+                [UIView animateWithDuration: 0.5 animations: ^{
+                    self.answer.center = CGPointMake(self.answer.center.x, self.answer.center.y - self.view.frame.size.height*0.2);
+                }];
+                
+                //NSString * text = [[NSString alloc] initWithData: data encoding: NSUTF8StringEncoding];
+                //NSLog(@"Data = %@",text);
+                //NSLog(@"Dict = %@",dict);
+            }
+        }];
+        
+        [dataTask resume];
+    }
+    //点击继续
+    else{
+        //题目索引+1
+        self.questionIndex++;
+        
+        //题目答完,push结束页面
+        if(self.questionIndex == 4){
+            FinishingViewController *fvc = [[FinishingViewController alloc] init];
+            fvc.count = self.count;
+            self.navigationController.navigationBarHidden = YES;
+            [self.navigationController pushViewController: fvc animated: YES];
+        }
+        else{
+            sender.userInteractionEnabled = NO;
+            sender.tag = 0;
+            sender.backgroundColor = [UIColor grayColor];
+            [sender setTitle: @"确认" forState: UIControlStateNormal];
+            [UIView animateWithDuration: 0.5 animations: ^{
+                self.answer.center = CGPointMake(self.answer.center.x, self.answer.center.y + self.view.frame.size.height*0.2);
+            }];
+            
+            //刷新题目
+            self.titleLabel.text = self.questionDict[@"data"][self.questionIndex][@"question"];
+            //[self.collectionView reloadData];
+            [self.collectionView reloadItemsAtIndexPaths:[self.collectionView indexPathsForVisibleItems]];
+        }
+    }
+}
+```
+
+#### ⑤FinishingViewController
+> 由两个label，一个button组成，分别实现上方的文本以及结果文本，和底部按钮
+```obj-c
+@interface FinishingViewController : UIViewController
+@property (nonatomic, strong) UILabel *fixText;
+@property (nonatomic, strong) UILabel *rightNumber;
+@property (nonatomic, strong) UIButton *button;
+@property (nonatomic) NSInteger count;
+@end
+```
+
+> 点击按钮pop界面即可返回初始界面
+```obj-c
+- (void)backUnitView: (UIButton *)sender{
+    [self.navigationController popToRootViewControllerAnimated:YES];
+}
+```
 
 ### (3)实验遇到的困难以及解决思路
-实验遇到的困难还是比较多的，一开始搭建环境时由于jdk版本过高导致出错，在修改各种配置文件无果后选择卸载高版本jdk安装jdk8；后来在实现电量获取时也遇到了困难，由于只在flutter进行了实现，而Android和ios端都没有进行实现，导致报错，后来在官方教程中找到了相应的实现方法才得以解决
+有了hw3打基础，基本上没有遇到什么困难，唯一卡住的地方是刷新题目时reload的问题，不知道为什么只能刷新一次，最后是通过更改cell中初始化的逻辑得以解决
 
 
 ## 四、实验思考及感想
-这次作业相比于上一次OC编写的作业要简单太多，不管是各种控件之间的关系、控件的种类还是代码量，并且编写一份代码即可在双端运行，让人感受到了flutter的强大。尤其是中文官网自带的dart教程，各种控件的参数和使用都有详细讲解，并且给予了一个完整的app例子。
-
+比上次要难一点，但比上上次要好，主要是考察网络请求和动画制作一块，相对页面设计一块涉及的不多，只有三个页面，所以工作量是要比较小的，不过界面之间的联系都比较紧密，涉及到多个界面间参数的传递，所以小地方要注意的很多。总的说下来，有了hw3打基础，现在做这些还是比较简单的，当然这是建立在能够上网查找控件属性的基础上的，并且上一次flutter编程，使我对控件视图等关系的理解加深了，让我确实感受到了自己的进步
